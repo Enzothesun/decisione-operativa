@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salerno — Decisione Operativa</title>
+<style>
+  :root { --bg:#0b0e13; --card:#141a23; --text:#e9eef5; --muted:#9fb0c7; --ok:#43d17a; --warn:#ffcc66; --danger:#ff6b6b; --border:#1d2737; }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:980px;margin:24px auto;padding:16px}
+  h1{font-size:1.5rem;margin:0 0 12px 0}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+  label{display:block;font-size:.92rem;color:var(--muted);margin:10px 0 6px}
+  input[type="date"],input[type="time"],select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263043;background:#0f1420;color:var(--text)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .btn{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;background:#1b2537;color:var(--text)}
+  .btn.primary{background:linear-gradient(135deg,#2968ff,#4cc2ff);color:#fff;font-weight:600}
+  .kpi{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;letter-spacing:.2px}
+  .kpi.ok{background:rgba(67,209,122,.15);color:var(--ok)}
+  .kpi.warn{background:rgba(255,204,102,.15);color:var(--warn)}
+  .kpi.danger{background:rgba(255,107,107,.18);color:var(--danger)}
+  .muted{color:var(--muted);font-size:.9rem}
+  .step{padding:10px 12px;border-left:4px solid #263043;background:#101623;border-radius:8px;margin:8px 0}
+  a.back{color:#9fb0c7;text-decoration:none;display:inline-block;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← Indice</a>
+  <h1>Salerno — Decisione operativa</h1>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Data arrivo chiamata</label>
+        <input id="dataCh" type="date">
+      </div>
+      <div>
+        <label>Ora arrivo chiamata</label>
+        <input id="oraCh" type="time">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Quando serve la fornitura?</label>
+        <select id="tipoRichiesta" onchange="syncTarget()">
+          <option value="oggi">Oggi (in giornata)</option>
+          <option value="giorniSuccessivi">Giorni successivi</option>
+        </select>
+      </div>
+      <div>
+        <label>Data richiesta fornitura</label>
+        <input id="dataTg" type="date">
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:end">
+      <button class="btn primary" onclick="calcola()">Calcola azione</button>
+      <button class="btn" onclick="resetForm()">Reset</button>
+      <div class="muted">Zona: <b>Salerno</b></div>
+    </div>
+  </div>
+
+  <div class="card" id="output" style="display:none">
+    <div id="pill" class="kpi">Azione</div>
+    <h2 id="titolo" style="margin:8px 0 4px"></h2>
+    <div id="motiv" class="muted"></div>
+    <div id="steps"></div>
+  </div>
+
+  <div class="muted" style="text-align:center; margin-top:8px">
+    Regole incluse (PDF Salerno): Oggi (lun–ven ≤14:00 vettore; 14–17 ven fino 16 forza controllo; oltre reperibile). Sabato ≤12:00 vettore, >12:00 reperibile. Domenica reperibile.
+    Giorni successivi: Lun–Ven Infomed no call; Ven→Sab ≤14:00 Infomed sabato (no call), 14–16 Forza controllo (no call), >16 Inserimento + BO report + gestione sabato mattina; Sab→Dom reperibile.
+  </div>
+</div>
+
+<script>
+function parseYMD(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function toYMD(d){ const y=d.getFullYear(),m=(d.getMonth()+1+'').padStart(2,'0'),da=(d.getDate()+'').padStart(2,'0'); return `${y}-${m}-${da}`; }
+function addDaysLocal(s,n){ const d=parseYMD(s); d.setDate(d.getDate()+n); return toYMD(d); }
+function dayIndexLocal(s){ return parseYMD(s).getDay(); }
+function dayNameIt(i){ return ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'][i]; }
+function nowYMD(){ return toYMD(new Date()); }
+function pad(n){ return (''+n).padStart(2,'0'); }
+function nowHHMM(){ const d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function timeToMins(t){ const [H,M]=t.split(':').map(Number); return H*60+M; }
+function daysDiff(a,b){ return Math.round((parseYMD(b)-parseYMD(a))/86400000); }
+
+function setDefaults(){
+  const today = nowYMD();
+  document.getElementById('dataCh').value = today;
+  document.getElementById('oraCh').value = nowHHMM();
+  document.getElementById('tipoRichiesta').value = 'oggi';
+  document.getElementById('dataTg').value = today;
+}
+function syncTarget(){
+  const tipo = document.getElementById('tipoRichiesta').value;
+  const dataCh = document.getElementById('dataCh').value;
+  const el = document.getElementById('dataTg');
+  if (tipo==='oggi'){ el.value = dataCh; }
+  else { el.value = addDaysLocal(dataCh,1); }
+}
+document.getElementById('dataCh')?.addEventListener('change', syncTarget);
+
+function calcola(){
+  const dataCh = document.getElementById('dataCh').value;
+  const oraCh  = document.getElementById('oraCh').value || nowHHMM();
+  const dataTg = document.getElementById('dataTg').value;
+  const tipo   = document.getElementById('tipoRichiesta').value;
+
+  const dowCh  = dayIndexLocal(dataCh);
+  const dowTg  = dayIndexLocal(dataTg);
+  const hhmm   = timeToMins(oraCh);
+
+  const FERIALE = (d)=> (d>=1 && d<=5);
+  const isNextDay = (daysDiff(dataCh,dataTg)===1);
+
+  const out = document.getElementById('output'); out.style.display='block';
+  const pill = document.getElementById('pill');
+  const titolo = document.getElementById('titolo');
+  const motiv  = document.getElementById('motiv');
+  const steps  = document.getElementById('steps'); steps.innerHTML='';
+
+  function addStep(t){ const div=document.createElement('div'); div.className='step'; div.textContent=t; steps.appendChild(div); }
+
+  if (tipo==='oggi'){
+    if (FERIALE(dowCh)){
+      const vettoreMax = timeToMins('14:00');
+      const forzaMax = timeToMins(dayNameIt(dowCh)==='venerdì' ? '16:00' : '17:00');
+      if (hhmm <= vettoreMax){
+        titolo.textContent = "CHIAMA VETTORE DI SCHEDA + inserisci su Infomed (oggi)";
+        pill.className = 'kpi ok';
+        motiv.textContent = "Chiamata feriale entro 14:00 (Salerno).";
+        addStep("Inserisci la richiesta su Infomed per OGGI.");
+        addStep("Chiama telefonicamente il vettore di scheda.");
+      } else if (hhmm <= forzaMax){
+        titolo.textContent = "Imposta FLAG 'Forza controllo customer' (NON chiamare vettore)";
+        pill.className = 'kpi warn';
+        motiv.textContent = "Chiamata feriale in fascia intermedia (Salerno).";
+        addStep("Inserisci la richiesta su Infomed per OGGI con flag 'Forza controllo customer' (gestione Magaldi).");
+        addStep("NON chiamare telefonicamente il vettore.");
+      } else {
+        titolo.textContent = "Contatta REPERIBILE COMMERCIALE (oggi)";
+        pill.className = 'kpi danger';
+        motiv.textContent = "Chiamata feriale oltre soglia serale (Salerno).";
+        addStep("Contatta il reperibile commerciale per autorizzazione alla consegna OGGI.");
+        addStep("Se AUTORIZZA: contatta vettore reperibile e inserisci su Infomed con codice reperibile.");
+        addStep("Se NON autorizza: invita il paziente a recarsi in farmacia (bombole gassose) e programma il primo feriale utile.");
+      }
+    } else if (dayNameIt(dowCh)==='sabato'){
+      if (hhmm <= timeToMins('12:00')){
+        titolo.textContent = "CHIAMA VETTORE DI SCHEDA + inserisci su Infomed (oggi, sabato)";
+        pill.className = 'kpi ok';
+        motiv.textContent = "Sabato Salerno entro 12:00.";
+        addStep("Inserisci la richiesta su Infomed per OGGI (sabato).");
+        addStep("Chiama telefonicamente il vettore di scheda.");
+      } else {
+        titolo.textContent = "Contatta REPERIBILE COMMERCIALE (oggi, sabato >12:00)";
+        pill.className = 'kpi danger';
+        motiv.textContent = "Sabato Salerno dopo le 12:00.";
+        addStep("Contatta il reperibile commerciale per autorizzazione alla consegna.");
+        addStep("Se AUTORIZZA: contatta vettore reperibile e inserisci su Infomed con codice reperibile.");
+        addStep("Se NON autorizza: farmacia + programma primo feriale utile.");
+      }
+    } else if (dayNameIt(dowCh)==='domenica'){
+      titolo.textContent = "Contatta REPERIBILE COMMERCIALE (oggi, domenica)";
+      pill.className = 'kpi danger';
+      motiv.textContent = "Domenica – sempre reperibile (Salerno).";
+      addStep("Contatta il reperibile commerciale per autorizzazione.");
+      addStep("Se AUTORIZZA: contatta vettore reperibile e inserisci su Infomed con codice reperibile.");
+      addStep("Se NON autorizza: farmacia + programma primo feriale utile.");
+    }
+    return;
+  }
+
+  if (FERIALE(dowTg) && daysDiff(dataCh,dataTg)>=1){
+    titolo.textContent = "INSERISCI su Infomed (giorno target) — NON chiamare vettore";
+    pill.className = 'kpi warn';
+    motiv.textContent = "Fornitura nei giorni successivi LUN–VEN (Salerno).";
+    addStep("Inserisci su Infomed per il giorno target sul vettore di scheda.");
+    return;
+  }
+
+  if (dayNameIt(dowCh)==='venerdì' && dayNameIt(dowTg)==='sabato' && isNextDay){
+    if (hhmm <= timeToMins('14:00')){
+      titolo.textContent = "Inserisci su Infomed per SABATO (no call vettore)";
+      pill.className = 'kpi warn';
+      motiv.textContent = "Venerdì→Sabato entro le 14:00 (Salerno).";
+      addStep("Inserisci la richiesta su Infomed per il sabato (vettore di scheda).");
+      addStep("NON chiamare telefonicamente il vettore.");
+    } else if (hhmm > timeToMins('14:00') && hhmm <= timeToMins('16:00')){
+      titolo.textContent = "Inserisci per SABATO con FLAG 'Forza controllo customer' (no call)";
+      pill.className = 'kpi warn';
+      motiv.textContent = "Venerdì→Sabato tra 14:00 e 16:00 (Salerno).";
+      addStep("Inserisci la richiesta su Infomed per il sabato con flag 'Forza controllo customer' (gestione Magaldi).");
+      addStep("NON chiamare telefonicamente il vettore.");
+    } else {
+      titolo.textContent = "Inserisci per SABATO e lascia in 'INSERIMENTO' + BO report";
+      pill.className = 'kpi warn';
+      motiv.textContent = "Venerdì→Sabato dopo le 16:00 (Salerno).";
+      addStep("Inserisci la consegna in Infomed per il sabato sul vettore di scheda e lascia la richiesta in 'inserimento'.");
+      addStep("L’operatore BO a fine turno invia il report (emergenzapharma@gmail.com).");
+      addStep("Le chiamate ricevute dopo l’invio dei report vanno lasciate in inserimento ed evase il sabato mattina.");
+      addStep("Il sabato mattina l’operatore del primo turno salva/invia le richieste lasciate in inserimento.");
+    }
+    return;
+  }
+
+  if (dayNameIt(dowCh)==='sabato' && dayNameIt(dowTg)==='domenica' && isNextDay){
+    titolo.textContent = "Contatta REPERIBILE COMMERCIALE (consegna DOMENICA)";
+    pill.className = 'kpi danger';
+    motiv.textContent = "Sabato→Domenica (Salerno).";
+    addStep("Contatta il reperibile commerciale e richiedi autorizzazione alla consegna domenicale.");
+    addStep("Se AUTORIZZA: contatta il vettore reperibile e inserisci su Infomed con il codice reperibile.");
+    addStep("Se NON autorizza: farmacia + inserisci per il primo feriale utile sul vettore di scheda.");
+    return;
+  }
+
+  titolo.textContent = "Verifica con il Customer Service / Reperibile";
+  pill.className = 'kpi warn';
+  motiv.textContent = "Combinazione non esplicitata nel perimetro attuale. Attenersi alla prassi locale o escalare.";
+  addStep("Se serve, imposta 'Forza controllo customer' oppure contatta il reperibile commerciale.");
+}
+function resetForm(){ setDefaults(); document.getElementById('output').style.display='none'; }
+setDefaults();
+</script>
+</body>
+</html>
