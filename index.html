@@ -1,32 +1,114 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
+<title>Magaldi – Decisioni Operative Ossigeno</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Decisione Operativa – Ossigeno Liquido</title>
+
 <style>
-  :root{--bg:#0b0e13;--text:#e9eef5;--muted:#9fb0c7;--card:#141a23;--border:#1d2737;--accent:#4cc2ff}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
-  .wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-  h1{font-size:1.6rem;margin:0 0 18px 0}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  a.btn{display:inline-block;text-decoration:none;background:linear-gradient(135deg,#2968ff,#4cc2ff);
-    color:#fff;font-weight:700;padding:14px 20px;border-radius:12px;min-width:200px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 8px 24px rgba(0,0,0,.35);text-align:center}
-  p.muted{color:var(--muted);margin-top:10px;font-size:.95rem}
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f2740, #163c63);
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 720px;
+    padding: 24px;
+}
+
+.card {
+    background: rgba(255,255,255,0.08);
+    border-radius: 22px;
+    padding: 36px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    backdrop-filter: blur(6px);
+}
+
+h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+}
+
+.subtitle {
+    font-size: 14px;
+    opacity: .85;
+    margin-bottom: 28px;
+}
+
+.choice {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.choice-btn {
+    background: linear-gradient(135deg, #009A7E, #6fd3c0);
+    border: none;
+    border-radius: 18px;
+    padding: 22px 26px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #062c25;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.choice-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 40px rgba(0,0,0,0.45);
+}
+
+.arrow {
+    font-size: 22px;
+}
+
+.footer {
+    margin-top: 24px;
+    font-size: 12px;
+    opacity: .7;
+}
 </style>
 </head>
+
 <body>
-  <div class="wrap">
+
+<div class="container">
     <div class="card">
-      <h1>Decisione Operativa – Ossigeno Liquido</h1>
-      <div class="grid">
-        <a class="btn" href="caserta.html">Caserta</a>
-        <a class="btn" href="salerno.html">Salerno</a>
-      </div>
-      <p class="muted">Seleziona la tua zona</p>
+        <h1>Magaldi</h1>
+        <div class="subtitle">
+            Decisioni operative per ossigenoterapia domiciliare
+        </div>
+
+        <div class="choice">
+            <button class="choice-btn"
+                onclick="window.location.href='liquido/'">
+                Ossigeno Liquido
+                <span class="arrow">➜</span>
+            </button>
+
+            <button class="choice-btn"
+                onclick="window.location.href='gassoso/Decisione_Operativa_Ossigeno_Gassoso_v1_3.html'">
+                Ossigeno Gassoso
+                <span class="arrow">➜</span>
+            </button>
+        </div>
+
+        <div class="footer">
+            HUB Magaldi – uso interno
+        </div>
     </div>
-  </div>
+</div>
+
 </body>
 </html>
