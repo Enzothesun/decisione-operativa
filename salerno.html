@@ -69,8 +69,8 @@
   </div>
 
   <div class="muted" style="text-align:center; margin-top:8px">
-    Regole incluse (PDF Salerno): Oggi (lun–ven ≤14:00 vettore; 14–17 ven fino 16 forza controllo; oltre reperibile). Sabato ≤12:00 vettore, >12:00 reperibile. Domenica reperibile.
-    Giorni successivi: Lun–Ven Infomed no call; Ven→Sab ≤14:00 Infomed sabato (no call), 14–16 Forza controllo (no call), >16 Inserimento + BO report + gestione sabato mattina; Sab→Dom reperibile.
+    Regole incluse (PDF Salerno): Oggi (lun–ven ≤14:00 vettore; 14–17 ven fino 16 forza controllo; oltre reperibile). Sabato ≤12:00 reperibile commerciale + vettore di scheda previa autorizzazione, >12:00 reperibile. Domenica reperibile.
+    Giorni successivi: Lun–Ven Infomed no call; Ven→Sab ≤14:00 Infomed sabato (no call), 14–16 Forza controllo (no call), >16 reperibile commerciale + Inserimento + BO report + gestione sabato mattina; Sab→Dom reperibile.
   </div>
 </div>
 
@@ -149,7 +149,7 @@ function calcola(){
       }
     } else if (dayNameIt(dowCh)==='sabato'){
       if (hhmm <= timeToMins('12:00')){
-        titolo.textContent = "CHIAMA VETTORE DI SCHEDA + inserisci su Infomed (oggi, sabato)";
+        titolo.textContent = "Contatta REPERIBILE COMMERCIALE (oggi, sabato entro 12:00)";
         pill.className = 'kpi ok';
         motiv.textContent = "Sabato Salerno entro 12:00.";
         addStep("Inserisci la richiesta su Infomed per OGGI (sabato).");
