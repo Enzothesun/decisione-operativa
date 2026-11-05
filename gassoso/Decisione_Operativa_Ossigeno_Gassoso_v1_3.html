@@ -32,7 +32,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Decisione Operativa – Ossigeno Gassoso <span class="muted" style="font-size:.9rem">v1.3</span></h1>
+  <h1>Decisione Operativa – Ossigeno Gassoso <span class="muted" style="font-size:.9rem">v1.4</span></h1>
 
   <div class="card">
     <div class="row">
@@ -40,9 +40,13 @@
         <label>Zona</label>
         <select id="zona" onchange="toggleCostiera()">
           <option value="Salerno">Salerno</option>
+          <option value="Cilento">Cilento – vettori 753, 859, 8021</option>
           <option value="Caserta">Caserta</option>
           <option value="Napoli">Napoli</option>
         </select>
+        <div id="cilentoNote" class="hint" style="display:none; color:#ffcc66">
+          Dal 31/10/2026: nessuna consegna ordinaria GOX di sabato per i vettori 753, 859 e 8021.
+        </div>
         <div id="costieraWrap" class="hint" style="display:none">
           <label style="display:inline-flex;gap:8px;align-items:center">
             <input id="costiera" type="checkbox"> Area Costiera (Salerno)
@@ -96,6 +100,7 @@
   </div>
 
   <div class="footer">
+    Cilento (vettori 753, 859, 8021): dal 31/10/2026 niente consegne ordinarie GOX il sabato. Per venerdì→sabato valgono le fasce del LOX Cilento; sabato in giornata: sempre reperibile commerciale.<br/>
     Salerno: feriali ≤15:00 vettore scheda; 15–17 (ven ≤16) piano domani / urgenze a Magaldi (flag Forza controllo, NON chiamare vettore); &gt;17 reperibile.
     Sabato ≤12:00 vettore giro; &gt;12 reperibile; Domenica sempre reperibile. Costiera: sabato sempre reperibile.<br/>
     Napoli/Caserta: feriali ≤15:00 vettore scheda; 15–19 (ven ≤16) contattare Antonio Esposito (palmare); &gt;19 reperibile.
@@ -136,8 +141,11 @@ function syncTarget(){
   updateHints();
 }
 function toggleCostiera(){
-  const show = document.getElementById('zona').value === 'Salerno';
-  document.getElementById('costieraWrap').style.display = show ? 'block':'none';
+  const zona = document.getElementById('zona').value;
+  document.getElementById('costieraWrap').style.display = zona === 'Salerno' ? 'block':'none';
+  document.getElementById('cilentoNote').style.display = zona === 'Cilento' ? 'block':'none';
+  if (zona !== 'Salerno') document.getElementById('costiera').checked = false;
+  document.getElementById('output').style.display = 'none';
 }
 function updateHints(){
   const dch = document.getElementById('dataCh').value;
@@ -153,7 +161,8 @@ document.getElementById('dataCh')?.addEventListener('change', syncTarget);
 /* --- motore regole --- */
 function calcola(){
   const zona = document.getElementById('zona').value;
-  const costiera = document.getElementById('costiera')?.checked || false;
+  const isCilento = zona === 'Cilento';
+  const costiera = zona === 'Salerno' && (document.getElementById('costiera')?.checked || false);
   const tipo = document.getElementById('tipoRichiesta').value;
   const dataCh = document.getElementById('dataCh').value;
   const oraCh = document.getElementById('oraCh').value || nowHHMM();
@@ -176,8 +185,8 @@ function calcola(){
 
   /* === OGGI === */
   if (tipo==='oggi'){
-    /* --- SALERNO --- */
-    if (zona==='Salerno'){
+    /* --- SALERNO / CILENTO (GOX) --- */
+    if (zona==='Salerno' || isCilento){
       if (FERIALE(dowCh)){
         if (hhmm <= timeToMins('15:00')){
           titolo.textContent = "CHIAMA VETTORE DI SCHEDA + inserisci su Infomed (oggi)";
@@ -185,10 +194,17 @@ function calcola(){
           addStep("Inserisci la richiesta su Infomed per OGGI (vettore di scheda).");
           addStep("Evadi telefonicamente al vettore di scheda.");
         } else if (hhmm <= timeToMins(dayNameIt(dowCh)==='venerdì'?'16:00':'17:00')){
-          titolo.textContent = "Carica sul piano di lavoro del giorno seguente; URGENZE → Magaldi (Forza controllo)";
-          pill.className='kpi warn'; motiv.textContent="Salerno feriale 15:00–17:00 (ven fino 16:00).";
-          addStep("Inserisci la richiesta sul piano di lavoro del giorno successivo (vettore di giro).");
-          addStep("Per richieste urgenti: inserisci la richiesta su Infomed per OGGI e imposta il flag 'Forza controllo customer' per gestione Magaldi. NON chiamare il vettore.");
+          if (isCilento && dowCh===5){
+            titolo.textContent = "Cilento: nessuna consegna ordinaria sabato; URGENZE → Magaldi (Forza controllo)";
+            pill.className='kpi warn'; motiv.textContent="Cilento GOX, venerdì 15:00–16:00.";
+            addStep("Non inserire la consegna ordinaria per SABATO: programma il primo giorno feriale utile (lunedì), se compatibile con la richiesta.");
+            addStep("Per richieste urgenti da gestire OGGI: inserisci su Infomed per venerdì con flag 'Forza controllo customer'. NON chiamare il vettore.");
+          } else {
+            titolo.textContent = "Carica sul piano di lavoro del giorno seguente; URGENZE → Magaldi (Forza controllo)";
+            pill.className='kpi warn'; motiv.textContent="Salerno feriale 15:00–17:00 (ven fino 16:00).";
+            addStep("Inserisci la richiesta sul piano di lavoro del giorno successivo (vettore di giro).");
+            addStep("Per richieste urgenti: inserisci la richiesta su Infomed per OGGI e imposta il flag 'Forza controllo customer' per gestione Magaldi. NON chiamare il vettore.");
+          }
         } else {
           titolo.textContent = "Contatta REPERIBILE COMMERCIALE (oggi)";
           pill.className='kpi danger'; motiv.textContent="Salerno feriale >17:00 (ven >16:00).";
@@ -196,7 +212,10 @@ function calcola(){
           addStep("Se AUTORIZZA: contatta vettore reperibile e inserisci su Infomed con codice reperibile.");
           addStep("Se NON autorizza: invita la farmacia a dare bombole di gassoso che ha presso di sé, oppure – d'accordo con la farmacia – contatta il paziente a recuperare una o più bombole in farmacia.");
           const isFriday = (dayNameIt(dowCh)==='venerdì');
-          if (isFriday){
+          if (isFriday && isCilento){
+            addStep("Nessuna consegna ordinaria del SABATO: se la consegna di oggi non viene autorizzata, programma il primo feriale utile (lunedì), secondo indicazioni commerciali.");
+            addStep("Per un'eventuale consegna urgente SABATO è necessaria la preventiva autorizzazione del reperibile commerciale.");
+          } else if (isFriday){
             addStep("Inserisci la consegna per il giorno successivo (SABATO) e lascia la richiesta in 'inserimento'.");
             addStep("A fine turno l’operatore BO invia il report a grantrasportsrl@gmail.com.");
             addStep("L’operatore BO, una volta inviata la mail, SALVA/INVIA le richieste che erano in 'inserimento'.");
@@ -207,7 +226,14 @@ function calcola(){
           }
         }
       } else if (dayNameIt(dowCh)==='sabato'){
-        if (costiera){
+        if (isCilento){
+          titolo.textContent = "Cilento: contatta SEMPRE il REPERIBILE COMMERCIALE (sabato)";
+          pill.className='kpi danger'; motiv.textContent="Cilento GOX: sospese le consegne ordinarie del sabato (753, 859, 8021).";
+          addStep("Non inserire una consegna ordinaria sul vettore di giro.");
+          addStep("Contatta il reperibile commerciale per autorizzazione all'eventuale consegna urgente.");
+          addStep("Se AUTORIZZA: contatta il vettore reperibile e inserisci su Infomed con codice reperibile.");
+          addStep("Se NON autorizza: gestisci con farmacia secondo procedura GOX e programma il primo giorno feriale utile.");
+        } else if (costiera){
           titolo.textContent = "Contatta SEMPRE reperibile commerciale (Costiera – sabato)";
           pill.className='kpi danger'; motiv.textContent="Area Costiera Salerno (sabato).";
           addStep("Contatta reperibile commerciale; se autorizza: vettore reperibile + codice reperibile su Infomed.");
@@ -283,8 +309,37 @@ function calcola(){
       return;
     }
 
+    /* Cilento: nessun inserimento ordinario al sabato, anche se richiesto in anticipo */
+    if (isCilento && dowTg===6 && !(dowCh===5 && isNextDay)){
+      titolo.textContent = "Cilento: non programmare consegne ordinarie per SABATO";
+      pill.className='kpi danger'; motiv.textContent="Sospensione GOX sabato per vettori 753, 859 e 8021.";
+      addStep("Non inserire la consegna su Infomed con data sabato.");
+      addStep("Per un eventuale anticipo o un'urgenza, verificare con Customer Service / reperibile commerciale; nessuna riprogrammazione automatica.");
+      return;
+    }
+
     /* Ven->Sab (next day) */
     if (dayNameIt(dowCh)==='venerdì' && dayNameIt(dowTg)==='sabato' && isNextDay){
+      if (isCilento){
+        if (hhmm <= timeToMins('14:00')){
+          titolo.textContent = "Cilento: inserisci per VENERDÌ e CHIAMA il vettore di scheda";
+          pill.className='kpi ok'; motiv.textContent="Cilento GOX, venerdì→sabato entro le 14:00 (come LOX).";
+          addStep("Anticipa la fornitura: inserisci su Infomed per OGGI (venerdì).");
+          addStep("Chiama telefonicamente il vettore di scheda.");
+        } else if (hhmm <= timeToMins('16:00')){
+          titolo.textContent = "Cilento: inserisci per VENERDÌ con FLAG 'Forza controllo customer'";
+          pill.className='kpi warn'; motiv.textContent="Cilento GOX, venerdì→sabato dalle 14:01 alle 16:00 (come LOX).";
+          addStep("Inserisci su Infomed per OGGI (venerdì) con flag 'Forza controllo customer' per gestione Magaldi.");
+          addStep("NON chiamare telefonicamente il vettore.");
+        } else {
+          titolo.textContent = "Cilento: contatta REPERIBILE COMMERCIALE per sabato";
+          pill.className='kpi danger'; motiv.textContent="Cilento GOX, venerdì→sabato dopo le 16:00 (come LOX).";
+          addStep("Contatta il reperibile commerciale per autorizzazione alla consegna urgente SABATO.");
+          addStep("Se AUTORIZZA: contatta il vettore reperibile e inserisci su Infomed con codice reperibile.");
+          addStep("Se NON autorizza: gestisci con farmacia secondo procedura GOX e programma LUNEDÌ sul vettore di scheda.");
+        }
+        return;
+      }
       if (zona==='Salerno'){
         if (hhmm <= timeToMins('16:00')){
           titolo.textContent = "Inserisci per SABATO (vettore di giro) — NON chiamare";
